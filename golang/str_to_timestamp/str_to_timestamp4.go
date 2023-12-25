@@ -38,7 +38,6 @@ func (t *Time4) ToTimeStamp(ctx context.Context) int {
 
 	yg := t.year - 1970
 	result += yg*365 + yg/4 - yg/100 + yg/400
-	t.isLeap = (t.year%4 == 0 && t.year%100 != 0) || t.year%400 == 0
 
 	if t.days > 0 {
 		result += t.days - 1
@@ -48,7 +47,7 @@ func (t *Time4) ToTimeStamp(ctx context.Context) int {
 		}
 
 		result += t.date - 1
-		if t.isLeap && t.month > 2 {
+		if isLeap(ctx, t) && t.month > 2 {
 			result += 1
 		}
 	}
@@ -339,17 +338,24 @@ var registration4 = map[string]RestorableIntTimeInfo{
  * this function take the first input as a date string, and parse the date time info according to the format which
  * defined in the second parameter. If parsed successfully, a unix timestamp (in second) will be returned. if any error
  * occurs, -1 will be returned.\n
- * *NOTE*: the timestamp will be calibrated based on the local time zone.\n
+ * <strong>NOTE</strong>: the timestamp will be calibrated based on the local time zone.\n
  * \n
- * continuous digit parsing behavior:\n
+ * <b>continuous digit parsing behavior:</b>\n
  * when there's no explicit seperator between date time info element, this function will try to extract every part in
  * greedy mode. for instance, when parsing "20231111" with "%Y%c%e%k", it will be interpreted as 2023/11/01 01:00:00.
  * if switch the position of %k and %c, then we will get 2023/01/01 11:00:00 instead.\n
- * month/date correlation:\n
+ * \n
+ * <b>month/date correlation:</b>\n
  * suppose the format string has substring like "%Y%c%e…", when encounter the input like "2023229", `%c` will get `2`,
  * `%e` will get `2` also, since `2023` is not a leap year, and the residual `9` will be left to the following control
  * character to match.\n
  * \n
+ * <b>date info overwriting:</b>\n
+ * if the same semantic control characters appear multiple times in pattern, and all get parsed with valid info, then
+ * the late one will overwrite the corresponding info parsed previous. for instance, when parsing "2023-1-1 13:00:00 7"
+ * with "%Y-%c-%e %T %k", it will be interpreted as 2023/01/01 <b>07</b>:00:00. note that the hour part get overwritten.
+ * \n\n
+ * <b>default value:</b>
  * this function will try to parse the complete date time info based on the format string, if any date part missing, the
  * corresponding default value will be taken from the `1970 01 01 00:00:00`. it's to say, after "11 08" get parsed by
  * "%m %d", the hour, minute, second part will all be stuffed by 0, and the year will be set 1970 by default.\n
@@ -394,41 +400,39 @@ var registration4 = map[string]RestorableIntTimeInfo{
  * +----+------------------------------------------+\n
  * | %% | A literal % character                    |\n
  * +----+------------------------------------------+\n
- * more detailed description:\n
- *   `%b`: all the valid input includes: Jan, Jan., Feb, Feb., Mar, Mar., Apr, Apr., May, May., Jun, Jun., June, Jul, Jul.
- *       July, Aug, Aug., Sep, Sep., Sept. Oct, Oct., Nov, Nov., Dec, Dec.\n
- *   `%c`: when in continuous digit situation, this control character will work in greedy mode. e.g. when find `11` in
- *       character stream in date string. this character will take it as November instead of January with a residual
- *       `1` left to the following control character to match.\n
- *   `%e`: will also work in greedy mode, alike to %c\n
- *   `%j`: will also work in greedy mode, alike to %c. NOTE: \n
- *       1.) this control character will override the infos matched by month and date.\n
- *       2.) the XXX matched by this control character can actually great than 365. if this overflow situation occurs,
- *       the minuend will be counted to the next year. e.g. after `2023366` being parsed by `%Y%j`, it will be processed
- *       as the equivalent `2024/01/01`.\n
- *   `%k`: will also work in greedy mode, alike to %c\n
- *   `%l`: will also work in greedy mode, alike to %c\n
- *   `%p`: can be used standalone, and also can be composed with any hour control character, if %p successfully match
- *       `PM` or `pm` in date string, and meanwhile, the matched hour is less than 12, then additional 12 hours will be
- *       added. otherwise, this control character will just be neglected.\n
- *   `%y`: if the value XX is less than 70, then it will be processed as 19XX. otherwise, 20XX.\n
+ * <b>more detailed description:</b>
+ * <ul>
+ * <li>`%b`: all the valid input includes: Jan, Jan., Feb, Feb., Mar, Mar., Apr, Apr., May, May., Jun, Jun., June, Jul, Jul.
+ * July, Aug, Aug., Sep, Sep., Sept. Oct, Oct., Nov, Nov., Dec, Dec.\n</li>
+ * <li>`%c`: when in continuous digit situation, this control character will work in greedy mode. e.g. when find `11` in
+ * character stream in date string. this character will take it as November instead of January with a residual `1` left to 
+ * the following control character to match.\n</li>
+ * <li>`%e`: will also work in greedy mode, alike to %c\n</li>
+ * <li>`%j`: will also work in greedy mode, alike to %c\n</li>
+ *<strong>NOTE: </strong>
+ * <ol>
+ *   <li>this control character will override the infos matched by month and date.\n</li>
+ *   <li>the XXX matched by this control character can actually great than 365. if this overflow situation occurs, the minuend 
+ * will be counted to the next year. e.g. after `2023366` being parsed by `%Y%j`, it will be processed as the equivalent 
+ *`2024/01/01`.\n</li>
+ *</ol>
+ * <li>`%k`: will also work in greedy mode, alike to %c\n</li>
+ * <li>`%l`: will also work in greedy mode, alike to %c\n</li>
+ * <li>`%p`: can be used standalone, and also can be composed with any hour control character, if %p successfully match `PM` or `pm` 
+ * in date string, and meanwhile, the matched hour is less than 12, then additional 12 hours will be added. otherwise, this control 
+ * character will just be neglected.\n</li>
+ * <li>`%y`: if the value XX is less than 70, then it will be processed as 19XX. otherwise, 20XX.\n</li>
+ * </ul>
  *\n
  * @Example 1: RF_StrToTimestamp("2023 11 08 16 42 40", "%Y %m %d %H %i %s") return 1699461760 (GMT)
- * @Example 2: RF_StrToTimestamp("6 2023 JanuaryX8 42 40 ", "%l %Y %MX%e %i %s") is equal to\n
- *                RF_StrToTimestamp("23 01 08%06:42:40", "%y %m%%%d %T")
+ * @Example 2: RF_StrToTimestamp("6 2023 JanuaryX8 42 40 ", "%l %Y %MX%e %i %s") is equal to RF_StrToTimestamp("23 01 08%06:42:40", "%y %m%%%d %T")
  * @Example 3: RF_StrToTimestamp("PM", "%p") return 43200(GMT)
- * @Example 4: RF_StrToTimestamp("2023131 164240", "%Y%c%e %H%i%S") is equal to\n
- *                RF_StrToTimestamp("2023-01-31 16:42:40", "%Y-%m-%d %T"))
- * @Example 5: RF_StrToTimestamp("20231101 4240", "%Y%c%e%H %i%S") is equal to\n
- *                RF_StrToTimestamp("2023-01-01 01:42:40", "%Y-%m-%d %T")
- * @Example 6: RF_StrToTimestamp("20231121113", "%Y%c%i%e%k%S") is equal to\n
- *                RF_StrToTimestamp("2023-01-01 01:12:13", "%Y-%m-%d %T")
- * @Example 7: RF_StrToTimestamp("202311211113", "%Y%c%i%e%k%S") is equal to\n
- *                RF_StrToTimestamp("2023-11-01 01:21:13", "%Y-%m-%d %T")
- * @Example 8: RF_StrToTimestamp("202322901", "%Y%c%e%k%i") is equal to\n
- *                RF_StrToTimestamp("2023-02-02 09:01:00", "%Y-%m-%d %T")
- * @Example 9: RF_StrToTimestamp("2023133", "%Y%j%c%e") is equal to\n
- *                RF_StrToTimestamp("2023-01-01 00:00:00", "%Y-%m-%d %T"))
+ * @Example 4: RF_StrToTimestamp("2023131 164240", "%Y%c%e %H%i%S") is equal to RF_StrToTimestamp("2023-01-31 16:42:40", "%Y-%m-%d %T"))
+ * @Example 5: RF_StrToTimestamp("20231101 4240", "%Y%c%e%H %i%S") is equal to RF_StrToTimestamp("2023-01-01 01:42:40", "%Y-%m-%d %T")
+ * @Example 6: RF_StrToTimestamp("20231121113", "%Y%c%i%e%k%S") is equal to RF_StrToTimestamp("2023-01-01 01:12:13", "%Y-%m-%d %T")
+ * @Example 7: RF_StrToTimestamp("202311211113", "%Y%c%i%e%k%S") is equal to RF_StrToTimestamp("2023-11-01 01:21:13", "%Y-%m-%d %T")
+ * @Example 8: RF_StrToTimestamp("202322901", "%Y%c%e%k%i") is equal to RF_StrToTimestamp("2023-02-02 09:01:00", "%Y-%m-%d %T")
+ * @Example 9: RF_StrToTimestamp("2023133", "%Y%j%c%e") is equal to RF_StrToTimestamp("2023-01-01 00:00:00", "%Y-%m-%d %T"))
  * @Param str: date string to be parsed
  * @Param format: pattern string, contains any number of control characters
  * @Return: timestamp in second if parsed successfully, or -1 if any error occurs
@@ -537,12 +541,16 @@ func RF_StrToTimestamp4(ctx context.Context, str string, format string) int64 {
 	return int64(correctTime(ctx, time.ToTimeStamp(ctx)))
 }
 
+func isLeap(ctx context.Context, t *Time4) bool {
+	return (t.year%4 == 0 && t.year%100 != 0) || t.year%400 == 0
+}
+
 func monthDateCheck(ctx context.Context, time *Time4) bool {
 	switch time.month {
 	case 4, 6, 9, 11:
 		return time.date < 31
 	case 2:
-		return time.date < 29 || time.isLeap && time.date == 29
+		return time.date < 29 || isLeap(ctx, time) && time.date == 29
 	default:
 		return time.date < 32
 	}
