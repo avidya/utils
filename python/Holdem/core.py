@@ -48,24 +48,24 @@ def checkValidDeck(deck):
         raise Exception("invalid card style: " + str(deck))
 
 ## 
-# shuffled structure:
+# grouped structure:
 # original deck: ['H2', 'HT', 'CT', 'S5', 'ST']
-# after shuffle turned into: [['HT', 'CT', 'ST'], ['S5'], ['H2']]
+# after grouping, turned into: [['HT', 'CT', 'ST'], ['S5'], ['H2']]
 ##
-def shuffle(deck):
-    shuffledDeck={}
+def groupByRank(deck):
+    groupedDeck={}
     for card in deck:
-        if card[1] in shuffledDeck:
-            shuffledDeck[card[1]].append(card)
+        if card[1] in groupedDeck:
+            groupedDeck[card[1]].append(card)
         else:
-            shuffledDeck[card[1]]=[card]
-    return sorted(shuffledDeck.values(), key=lambda i:decode(i[0][1])+len(i)*100, reverse=True)
+            groupedDeck[card[1]]=[card]
+    return sorted(groupedDeck.values(), key=lambda i:decode(i[0][1])+len(i)*100, reverse=True)
 
-_pick_from_shuffledDeck=lambda shuffledDeck:list(map(lambda a:a[0], shuffledDeck))
+_pick_from_groupedDeck=lambda groupedDeck:list(map(lambda a:a[0], groupedDeck))
 
 _make_judge=lambda deck_pattern, rank, aux=lambda x:True:\
-    lambda shuffledDeck: Deck(rank, _pick_from_shuffledDeck(shuffledDeck)) \
-            if aux(shuffledDeck) and list(map(lambda a:len(a), shuffledDeck)) == deck_pattern \
+    lambda groupedDeck: Deck(rank, _pick_from_groupedDeck(groupedDeck)) \
+            if aux(groupedDeck) and list(map(lambda a:len(a), groupedDeck)) == deck_pattern \
             else None
 
 ## judge func generator. \n
@@ -73,29 +73,29 @@ _make_judge=lambda deck_pattern, rank, aux=lambda x:True:\
 # when any of such judge hit, a `Deck` will be instantiated and returned immediately, and this is why they be called 'trivial'.
 _trivial_judge=list(map(lambda p:_make_judge(p[0], p[1]), [([4,1],3), ([3,2],4), ([3,1,1],7), ([2,2,1],8), ([2,1,1,1],9)]))
 
-def isStraight(shuffledDeck):
-    if len(shuffledDeck) < 5:
+def isStraight(groupedDeck):
+    if len(groupedDeck) < 5:
         return None
-    elif decode(shuffledDeck[0][0][1]) - decode(shuffledDeck[4][0][1]) == 4:
-        return Deck(6, _pick_from_shuffledDeck(shuffledDeck))
-    elif shuffledDeck[0][0][1] == 'A' and shuffledDeck[1][0][1] == '5':
-        return Deck(6, _pick_from_shuffledDeck(shuffledDeck[1:] + [shuffledDeck[0]]))
+    elif decode(groupedDeck[0][0][1]) - decode(groupedDeck[4][0][1]) == 4:
+        return Deck(6, _pick_from_groupedDeck(groupedDeck))
+    elif groupedDeck[0][0][1] == 'A' and groupedDeck[1][0][1] == '5':
+        return Deck(6, _pick_from_groupedDeck(groupedDeck[1:] + [groupedDeck[0]]))
     else:
         return None
 
 def makeDeck(deck):
     checkValidDeck(deck)
-    shuffledDeck=shuffle(deck)
+    groupedDeck=groupByRank(deck)
 
     # although i tried very hard in expressing in some kind of lazy-eval mode, \n
     # but failed unfortunately at last & ended up in such an eagerly, ugly & inefficient way..
-    l=list(filter(lambda x:x, map(lambda judge:judge(shuffledDeck), _trivial_judge)))
+    l=list(filter(lambda x:x, map(lambda judge:judge(groupedDeck), _trivial_judge)))
     if len(l) > 0:
         return l[0]
     else:
-        d1=_make_judge([1,1,1,1,1], 5, aux=lambda shuffledDeck: len(set(map(lambda s: s[0][0], shuffledDeck))) == 1)(shuffledDeck)
-        d2=isStraight(shuffledDeck)
-        return Deck(2, d2.deck) if d1 and d2 else (d1 if d1 else (d2 if d2 else Deck(10, _pick_from_shuffledDeck(shuffledDeck))))
+        d1=_make_judge([1,1,1,1,1], 5, aux=lambda groupedDeck: len(set(map(lambda s: s[0][0], groupedDeck))) == 1)(groupedDeck)
+        d2=isStraight(groupedDeck)
+        return Deck(2, d2.deck) if d1 and d2 else (d1 if d1 else (d2 if d2 else Deck(10, _pick_from_groupedDeck(groupedDeck))))
 
 def pickHigh(deck):
     if len(deck) != 7:
@@ -118,24 +118,24 @@ def fastPickHigh(deck):
         d=isStraight2(s)
         if d:
             return Deck(2, d)
-    shuffledDeck=shuffle(deck)
-    if len(shuffledDeck[0]) == 4:
-        return Deck(3, [shuffledDeck[0][0], sorted(_pick_from_shuffledDeck(shuffledDeck[1:]), key=lambda x:decode(x[1]), reverse=True)[0]])
-    elif len(shuffledDeck[0]) == 3 and len(shuffledDeck[1]) >= 2:
-        return Deck(4, [shuffledDeck[0][0], shuffledDeck[1][0]])
+    groupedDeck=groupByRank(deck)
+    if len(groupedDeck[0]) == 4:
+        return Deck(3, [groupedDeck[0][0], sorted(_pick_from_groupedDeck(groupedDeck[1:]), key=lambda x:decode(x[1]), reverse=True)[0]])
+    elif len(groupedDeck[0]) == 3 and len(groupedDeck[1]) >= 2:
+        return Deck(4, [groupedDeck[0][0], groupedDeck[1][0]])
     elif isFlush:
         return Deck(5, isFlush)
-    d=isStraight2(sorted(_pick_from_shuffledDeck(shuffledDeck), key=lambda x:decode(x[1]), reverse=True))
+    d=isStraight2(sorted(_pick_from_groupedDeck(groupedDeck), key=lambda x:decode(x[1]), reverse=True))
     if d:
         return Deck(6, d)
-    elif len(shuffledDeck[0]) == 3:
-        return Deck(7, [shuffledDeck[0][0]] + sorted(_pick_from_shuffledDeck(shuffledDeck[1:]), key=lambda x:decode(x[1]), reverse=True)[:2]) 
-    elif len(shuffledDeck[0]) == 2 and len(shuffledDeck[1]) == 2:
-        return Deck(8, [shuffledDeck[0][0], shuffledDeck[1][0], sorted(_pick_from_shuffledDeck(shuffledDeck[2:]), key=lambda x:decode(x[1]), reverse=True)[0]])
-    elif len(shuffledDeck[0]) == 2:
-        return Deck(9, [shuffledDeck[0][0]] + sorted(_pick_from_shuffledDeck(shuffledDeck[1:]), key=lambda x:decode(x[1]), reverse=True)[:3])
+    elif len(groupedDeck[0]) == 3:
+        return Deck(7, [groupedDeck[0][0]] + sorted(_pick_from_groupedDeck(groupedDeck[1:]), key=lambda x:decode(x[1]), reverse=True)[:2]) 
+    elif len(groupedDeck[0]) == 2 and len(groupedDeck[1]) == 2:
+        return Deck(8, [groupedDeck[0][0], groupedDeck[1][0], sorted(_pick_from_groupedDeck(groupedDeck[2:]), key=lambda x:decode(x[1]), reverse=True)[0]])
+    elif len(groupedDeck[0]) == 2:
+        return Deck(9, [groupedDeck[0][0]] + sorted(_pick_from_groupedDeck(groupedDeck[1:]), key=lambda x:decode(x[1]), reverse=True)[:3])
     else:
-        return Deck(10, _pick_from_shuffledDeck(shuffledDeck)[:5])
+        return Deck(10, _pick_from_groupedDeck(groupedDeck)[:5])
 
 @total_ordering
 class Deck:

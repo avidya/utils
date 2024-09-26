@@ -68,11 +68,12 @@ if __name__ == '__main__':
     #     fastPickHigh(comb)
     # print("FastPickHigh Cost: " + "{:.3f}".format(x+time.time()) +"s")
 
-    # # x=-time.time()
-    # # for comb in l:
-    # #     pickHigh(comb)
-    # # print("PickHigh Cost: " + "{:.3f}".format(x+time.time()) +"s") 
+    # x=-time.time()
+    # for comb in l:
+    #     pickHigh(comb)
+    # print("PickHigh Cost: " + "{:.3f}".format(x+time.time()) +"s") 
 
     x=-time.time()
-    concurrentCal(["HA", 'CA'], ['C3', 'S3'])
+    concurrentCal(["HA", 'CT'], ['C2', 'S2'])
+    # trivialCal(["HA", 'CT'], ['C2', 'S2'])
     print("Cost: " + "{:.3f}".format(x+time.time()) +"s")
