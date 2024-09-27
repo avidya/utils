@@ -19,40 +19,24 @@ def checkValid(*decks):
 
 ALL_CARDS=set(map(lambda t: t[0]+t[1], product(ALL_SUITS, ALL_RANK)))
 
-def cal(tasks, *decks):
-    scores=list(map(lambda deck:Stat(deck), decks))
-    count=0
-    for c in tasks:
-        for s in scores:
-            s.Deck = fastPickHigh(list(chain(s.deck, c)))
-        sorted(scores, key=lambda s:s.Deck, reverse=True)[0].score+=1
-        count+=1
-        if count % 10000 == 0:
-            print("processed: " + str(count))
-    return count, scores
-
-
-def trivialCal(*decks):
-    checkValid(*decks)
-    count, scores = cal(combinations(ALL_CARDS - set(chain(*decks)), 5), *decks)
+def calSingle(jobs, pickFunc=fastPickHigh):
+    scores=list(map(lambda deck:Stat(deck), jobs[1:]))
     for s in scores:
-        print(str(s.deck) + " : " + "{:.2f}".format(s.score/count*100) + "%")
+        s.Deck = pickFunc(list(chain(s.deck, jobs[0])))
+    return scores[0].deck if scores[0].Deck > scores[1].Deck else ("draw game" if scores[0].Deck == scores[1].Deck else scores[1].deck)
 
-def calSingle(job):
-    scores=list(map(lambda deck:Stat(deck), job[1:]))
-    for s in scores:
-        s.Deck = fastPickHigh(list(chain(s.deck, job[0])))
-    return sorted(scores, key=lambda s:s.Deck, reverse=True)[0].deck
-
-def concurrentCal(*decks):
+def calRates(*decks, concurrency=True, pickFunc=fastPickHigh):
     checkValid(*decks)
     result=None
-    with Pool(multiprocessing.cpu_count()) as p:
-        result=Counter(map(lambda r:tuple(r), \
-            p.map_async(calSingle, map(lambda d:(d, *decks), (combinations(ALL_CARDS - set(chain(*decks)), 5)))).get()))
+    if concurrency:
+        with Pool(multiprocessing.cpu_count()) as p:
+            result=Counter(map(lambda r:str(r), \
+                p.map_async(calSingle, map(lambda d:(d, *decks), (combinations(ALL_CARDS - set(chain(*decks)), 5)))).get())) 
+    else:
+        result=Counter(map(lambda r:str(r), map(lambda d:calSingle((d, *decks), pickFunc), (combinations(ALL_CARDS - set(chain(*decks)), 5)))))
     count=reduce(lambda s,a: s+a, result.values())
     for k, v in map(lambda x:(x, "win rates: {:.2f}%".format(x[1]/count*100)), result.items()):
-        print(k, v)
+        print(k, v)  
 
 class Stat:
     def __init__(self, deck):
@@ -74,6 +58,5 @@ if __name__ == '__main__':
     # print("PickHigh Cost: " + "{:.3f}".format(x+time.time()) +"s") 
 
     x=-time.time()
-    concurrentCal(["HA", 'CT'], ['C2', 'S2'])
-    # trivialCal(["HA", 'CT'], ['C2', 'S2'])
+    calRates(['C2', 'S2'],["HA", 'CT'], pickFunc=pickHigh)
     print("Cost: " + "{:.3f}".format(x+time.time()) +"s")
