@@ -3,7 +3,7 @@ package funcs
 import (
 	"bytes"
 	"context"
-	"git.garena.com/shopee/loan-service/credit_backend/unicorn/unicorn-extension/src/Logger"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -468,7 +468,7 @@ func RF_StrToTimestamp1(ctx context.Context, str string, format string) int64 {
 		b := fs[i]
 		if controlMode {
 			if timeInfo, ok := registration[string(b)]; !ok {
-				Logger.Errorf(ctx, "unknown control character: %s", string(b))
+				fmt.Printf("unknown control character: %s", string(b))
 				return -1
 			} else {
 				var info string
@@ -484,15 +484,15 @@ func RF_StrToTimestamp1(ctx context.Context, str string, format string) int64 {
 					}
 				}
 				if !timeInfo.valid(ctx, info) {
-					Logger.Errorf(ctx, "error pattern: %s", info)
+					fmt.Printf("error pattern: %s", info)
 					return -1
 				} else if !timeInfo.populate(ctx, info, &time) {
-					Logger.Errorf(ctx, "duplicate definition: %s", info)
+					fmt.Printf("duplicate definition: %s", info)
 					return -1
 				}
 			}
 		} else if b != 37 && !tokenizer.match(ctx, b) {
-			Logger.Errorf(ctx, "unmatched character: %s", string(b))
+			fmt.Printf("unmatched character: %s", string(b))
 			return -1
 		}
 		controlMode = b == 37

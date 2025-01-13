@@ -3,7 +3,6 @@ package funcs
 import (
 	"context"
 	"fmt"
-	"git.garena.com/shopee/loan-service/credit_backend/unicorn/unicorn-extension/src/Logger"
 	"reflect"
 )
 
@@ -405,21 +404,21 @@ var registration4 = map[string]RestorableIntTimeInfo{
  * <li>`%b`: all the valid input includes: Jan, Jan., Feb, Feb., Mar, Mar., Apr, Apr., May, May., Jun, Jun., June, Jul, Jul.
  * July, Aug, Aug., Sep, Sep., Sept. Oct, Oct., Nov, Nov., Dec, Dec.\n</li>
  * <li>`%c`: when in continuous digit situation, this control character will work in greedy mode. e.g. when find `11` in
- * character stream in date string. this character will take it as November instead of January with a residual `1` left to 
+ * character stream in date string. this character will take it as November instead of January with a residual `1` left to
  * the following control character to match.\n</li>
  * <li>`%e`: will also work in greedy mode, alike to %c\n</li>
  * <li>`%j`: will also work in greedy mode, alike to %c\n</li>
  *<strong>NOTE: </strong>
  * <ol>
  *   <li>this control character will override the infos matched by month and date.\n</li>
- *   <li>the XXX matched by this control character can actually great than 365. if this overflow situation occurs, the minuend 
- * will be counted to the next year. e.g. after `2023366` being parsed by `%Y%j`, it will be processed as the equivalent 
+ *   <li>the XXX matched by this control character can actually great than 365. if this overflow situation occurs, the minuend
+ * will be counted to the next year. e.g. after `2023366` being parsed by `%Y%j`, it will be processed as the equivalent
  *`2024/01/01`.\n</li>
  *</ol>
  * <li>`%k`: will also work in greedy mode, alike to %c\n</li>
  * <li>`%l`: will also work in greedy mode, alike to %c\n</li>
- * <li>`%p`: can be used standalone, and also can be composed with any hour control character, if %p successfully match `PM` or `pm` 
- * in date string, and meanwhile, the matched hour is less than 12, then additional 12 hours will be added. otherwise, this control 
+ * <li>`%p`: can be used standalone, and also can be composed with any hour control character, if %p successfully match `PM` or `pm`
+ * in date string, and meanwhile, the matched hour is less than 12, then additional 12 hours will be added. otherwise, this control
  * character will just be neglected.\n</li>
  * <li>`%y`: if the value XX is less than 70, then it will be processed as 19XX. otherwise, 20XX.\n</li>
  * </ul>
@@ -486,16 +485,16 @@ func RF_StrToTimestamp4(ctx context.Context, str string, format string) int64 {
 					controlMode = false
 					continue
 				} else {
-					Logger.Errorf(ctx, "unmatched character: %d, `%%` is expected", _b)
+					fmt.Printf("unmatched character: %d, `%%` is expected", _b)
 					return -1
 				}
 			} else if timeInfo, ok := registration4[string(b)]; !ok {
-				Logger.Errorf(ctx, "unknown control character: %s", string(b))
+				fmt.Printf("unknown control character: %s", string(b))
 				return -1
 			} else {
 				if info, err := timeInfo.readInfo(ctx, t); err != nil {
 					if _, ok := timeInfo.(TerminalSymbol); len(t.rpBuff) == 0 || ok {
-						Logger.Errorf(ctx, "invalid pattern... ")
+						fmt.Printf("invalid pattern... ")
 						return -1
 					} else {
 						t.lastestRP = t.rpBuff[len(t.rpBuff)-1]
@@ -509,7 +508,7 @@ func RF_StrToTimestamp4(ctx context.Context, str string, format string) int64 {
 			}
 		} else if b != 37 {
 			if ok, _b := t.match(ctx, b); !ok {
-				Logger.Errorf(ctx, "unmatched character: %d, `%d` is expected", _b, b)
+				fmt.Printf("unmatched character: %d, `%d` is expected", _b, b)
 				return -1
 			}
 		}

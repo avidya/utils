@@ -1,3 +1,5 @@
+package stream
+
 // the functions are not mandatory to be written in recursive way, iterative way is also allowed.
 // but, once talk about recursive way, they are supposed to follow the tail recursion style.
 // lazy-evaluation is not supported so far.

@@ -1,7 +1,10 @@
+package stream
+
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMap(t *testing.T) {
@@ -57,4 +60,3 @@ func TestSum(t *testing.T) {
 func TestInList(t *testing.T) {
 	assert.New(t).True(InList[int](5, []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}))
 }
-
